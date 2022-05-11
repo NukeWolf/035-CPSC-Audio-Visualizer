@@ -1,5 +1,7 @@
 from multiprocessing import Process, Array
 #from graphics import *
+import board
+import neopixel
 
 import pyaudio
 import numpy as np
@@ -11,7 +13,7 @@ from config import *
 #from strips import Strips
 from util import FrequencyPrinter, CircularBuffer
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import math
 
 # creating initial data values
@@ -20,18 +22,18 @@ x = np.linspace(0, 64, 64)
 y = np.linspace(0, 64,64)
  
 # to run GUI event loop
-plt.ion()
+#plt.ion()
  
 # here we are creating sub plots
-figure, ax = plt.subplots(figsize=(10, 8))
-line1, = ax.plot(x, y)
+#figure, ax = plt.subplots(figsize=(10, 8))
+#line1, = ax.plot(x, y)
  
 # setting title
-plt.title("Geeks For Geeks", fontsize=20)
+#plt.title("Geeks For Geeks", fontsize=20)
  
 # setting x-axis label and y-axis label
-plt.xlabel("X-axis")
-plt.ylabel("Y-axis")
+#plt.xlabel("X-axis")
+#plt.ylabel("Y-axis")
 
 
 
@@ -82,7 +84,7 @@ def sampler(sample_array):
     # print 'Saving', a.shape, 'samples'
     # np.save("sample_30s_3.txt", np.array(samples), allow_pickle=True)
 
-
+pixels = neopixel.NeoPixel(board.D18,150)
 
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
@@ -90,6 +92,7 @@ wf = wave.open(MUSIC_FILE, 'rb')
 
 WF_RATE = wf.getframerate()
 
+info = audio.get_host_api_info_by_index(0)
 
 
 
