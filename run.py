@@ -52,6 +52,7 @@ def sampler_old(sample_array):
                         frames_per_buffer=CHUNK_SIZE)
 
     fp = FrequencyPrinter('Sampler')
+    prev_write = time.time() # save for the next loop
     while True:
         if PRINT_LOOP_FREQUENCY: fp.tick()
 
@@ -104,10 +105,16 @@ def sampler(sample_array):
 
     #read data
     data = wf.readframes(CHUNK_SIZE)
+    prev_write = time.time() # save for the next loop
     # play stream (looping from beginning of file to the end)
+    for x in range(3):
+        print(x)
+        time.sleep(1)
+        
     while data != '':
         # writing to the stream is what *actually* plays the sound.
-        stream.write(data)
+        
+        #stream.write(data)
 
         int_data = np.fromstring(data, dtype="int16")
         if PRINT_LOOP_FREQUENCY: fp.tick()
@@ -117,16 +124,21 @@ def sampler(sample_array):
         #print(fourier)
         power = np.log10(np.abs(fourier))**2
         #print(power)
+        power = np.pad(power,(0,256-len(power)))
         power = np.reshape(power,(16,math.floor(CHUNK_SIZE/ 16)))
         #print(power)
         matrix = np.int_(np.average(power,axis=1))
         matrix = np.delete(matrix,len(matrix)-1)
 
         if sample_array.acquire(False):
-            sample_array[0:14] = matrix
+            sample_array[0:15] = matrix
             sample_array.release()
 
         data = wf.readframes(CHUNK_SIZE)
+        print(matrix)
+        sleep_time = (CHUNK_SIZE / WF_RATE) - (time.time() - prev_write)
+        if sleep_time > 0: time.sleep(sleep_time)
+        prev_write = time.time() # save for the next loop
     # cleanup stuff.
     stream.close()    
     audio.terminate()
@@ -152,12 +164,13 @@ def visualize(sample_array):
         sleep_time = LED_WRITE_DELAY - (time.time() - prev_write)
         if sleep_time > 0: time.sleep(sleep_time)
         strip.show()
+        prev_write = time.time() # save for the next loop
     
         
 if __name__ == '__main__':
     sample_array    = Array('i', np.zeros(GRID_WIDTH, dtype=int))
     sampler_process    = Process(target=sampler,         name='Sampler',         args=(sample_array,))
-    visualizer_process = Process(target=visualize,      name='Visualizer',      args=(sample_array))
+    visualizer_process = Process(target=visualize,      name='Visualizer',      args=(sample_array,))
 
     processes = [sampler_process,  visualizer_process]
 

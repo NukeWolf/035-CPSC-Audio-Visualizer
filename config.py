@@ -34,7 +34,7 @@ LED_2_BRIGHTNESS = 75      # Set to 0 for darkest and 255 for brightest
 LED_2_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 LED_2_CHANNEL    = 1       # 0 or 1
 
-LED_WRITE_DELAY  = 0.005   # wait (in seconds) after writing to each LED strip
+LED_WRITE_DELAY  = 0.05   # wait (in seconds) after writing to each LED strip
 
 # ADC CONFIGURATION
 ADC_GAIN = 4
