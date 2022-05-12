@@ -1,7 +1,7 @@
 from multiprocessing import Process, Array
 #from graphics import *
-#import board
-#import neopixel
+import board
+import neopixel
 
 import pyaudio
 import numpy as np
@@ -84,7 +84,7 @@ def sampler(sample_array):
     # print 'Saving', a.shape, 'samples'
     # np.save("sample_30s_3.txt", np.array(samples), allow_pickle=True)
 
-#strip = neopixel.NeoPixel(board.D18,150)
+strip = neopixel.NeoPixel(board.D18,150,auto_write=False)
 
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
@@ -133,10 +133,18 @@ while data != '':
     matrix = np.delete(matrix,len(matrix)-1)
     #print(matrix)
     for x, intensity in enumerate(matrix):
+        if intensity >= 40:
+            intensity = 39
+            
+        #print(intensity)
         normalized = int(intensity / 4)
-        for y in range(normalized):
-            strip.setPixelColor(getPixelIndex(x,y), (255,0,0))
+        for y in range(GRID_HEIGHT):
+            if y < normalized:
+                strip[getPixelIndex(x,y)] = (255,0,0)
+            else:
+                strip[getPixelIndex(x,y)] = (0,0,0)
     strip.show()
+    print(matrix)
         
 
     
