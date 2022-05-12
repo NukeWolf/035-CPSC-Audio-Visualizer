@@ -38,7 +38,7 @@ y = np.linspace(0, 64,64)
 
 
 
-def sampler(sample_array):
+def sampler_old(sample_array):
     '''
     Sample the ADC as in continous mode and write into the shared array as a circular buffer.
     The index that has been most recently written is stored in the last slot in the array
@@ -84,89 +84,104 @@ def sampler(sample_array):
     # print 'Saving', a.shape, 'samples'
     # np.save("sample_30s_3.txt", np.array(samples), allow_pickle=True)
 
-strip = neopixel.NeoPixel(board.D18,150,auto_write=False)
+def getPixelIndex(x,y):
+    x = GRID_WIDTH - x -1 if (y % 2 == 1) else x
+    return y * GRID_WIDTH +x
 
-audio = pyaudio.PyAudio() # create pyaudio instantiation
+def sampler(sample_array):
+    audio = pyaudio.PyAudio() # create pyaudio instantiation
+    wf = wave.open(MUSIC_FILE, 'rb')
+    WF_RATE = wf.getframerate()
 
-wf = wave.open(MUSIC_FILE, 'rb')
-
-WF_RATE = wf.getframerate()
-
-info = audio.get_host_api_info_by_index(0)
-
-
-
-
-stream = audio.open(
+    stream = audio.open(
             format = audio.get_format_from_width(wf.getsampwidth()),
             channels = wf.getnchannels(),
             rate = WF_RATE,
             output=True,
             frames_per_buffer=CHUNK_SIZE
         )
+    fp = FrequencyPrinter('Sampler')
 
-fp = FrequencyPrinter('Sampler')
-# read data (based on the chunk size)
-data = wf.readframes(CHUNK_SIZE)
-
-def getPixelIndex(x,y):
-    x = GRID_WIDTH - x -1 if (y % 2 == 1) else x
-    return y * GRID_WIDTH +x
-
-# play stream (looping from beginning of file to the end)
-while data != '':
-    # writing to the stream is what *actually* plays the sound.
-    int_data = np.fromstring(data, dtype="int16")
-
-    if PRINT_LOOP_FREQUENCY: fp.tick()
-
-    stream.write(data)
+    #read data
     data = wf.readframes(CHUNK_SIZE)
-    fourier = np.fft.rfft(int_data)
-    fourier = np.delete(fourier,len(fourier)-1)
-    #print(fourier)
-    power = np.log10(np.abs(fourier))**2
-    #print(power)
-    power = np.reshape(power,(16,math.floor(CHUNK_SIZE/ 16)))
-    #print(power)
-    matrix = np.int_(np.average(power,axis=1))
-    matrix = np.delete(matrix,len(matrix)-1)
-    #print(matrix)
-    for x, intensity in enumerate(matrix):
-        if intensity >= 40:
-            intensity = 39
-            
-        #print(intensity)
-        normalized = int(intensity / 4)
-        for y in range(GRID_HEIGHT):
-            if y < normalized:
-                strip[getPixelIndex(x,y)] = (255,0,0)
-            else:
-                strip[getPixelIndex(x,y)] = (0,0,0)
-    strip.show()
-    print(matrix)
+    # play stream (looping from beginning of file to the end)
+    while data != '':
+        # writing to the stream is what *actually* plays the sound.
+        stream.write(data)
+
+        int_data = np.fromstring(data, dtype="int16")
+        if PRINT_LOOP_FREQUENCY: fp.tick()
+
+        fourier = np.fft.rfft(int_data)
+        fourier = np.delete(fourier,len(fourier)-1)
+        #print(fourier)
+        power = np.log10(np.abs(fourier))**2
+        #print(power)
+        power = np.reshape(power,(16,math.floor(CHUNK_SIZE/ 16)))
+        #print(power)
+        matrix = np.int_(np.average(power,axis=1))
+        matrix = np.delete(matrix,len(matrix)-1)
+
+        if sample_array.acquire(False):
+            sample_array[0:14] = matrix
+            sample_array.release()
+
+        data = wf.readframes(CHUNK_SIZE)
+    # cleanup stuff.
+    stream.close()    
+    audio.terminate()
+
+    
+
+def visualize(sample_array):
+    strip = neopixel.NeoPixel(board.D18,150,auto_write=False)
+    fp = FrequencyPrinter('Visualize')
+    prev_write = time.time() # save for the next loop
+    while True:
+        if PRINT_LOOP_FREQUENCY: fp.tick()
+        for x, intensity in enumerate(sample_array):
+            if intensity >= 40:
+                intensity = 39
+            normalized = int(intensity / 4)
+            for y in range(GRID_HEIGHT):
+                if y < normalized:
+                    strip[getPixelIndex(x,y)] = (255,0,0)
+                else:
+                    strip[getPixelIndex(x,y)] = (0,0,0)
         
+        sleep_time = LED_WRITE_DELAY - (time.time() - prev_write)
+        if sleep_time > 0: time.sleep(sleep_time)
+        strip.show()
+    
+        
+if __name__ == '__main__':
+    sample_array    = Array('i', np.zeros(GRID_WIDTH, dtype=int))
+    sampler_process    = Process(target=sampler,         name='Sampler',         args=(sample_array,))
+    visualizer_process = Process(target=visualize,      name='Visualizer',      args=(sample_array))
+
+    processes = [sampler_process,  visualizer_process]
+
+    for p in processes: p.start()
+    for p in processes: print("Started {} on PID {}".format(p.name, p.pid))
+    for p in processes: p.join()
 
     
  
-    # updating data values
-    #line1.set_ydata(matrix)
- 
-    # drawing updated values
-    #figure.canvas.draw()
- 
-    # This will run the GUI event
-    # loop until all UI events
-    # currently waiting have been processed
-    #figure.canvas.flush_events()
-    #time.sleep((1))
+# updating data values
+#line1.set_ydata(matrix)
+
+# drawing updated values
+#figure.canvas.draw()
+
+# This will run the GUI event
+# loop until all UI events
+# currently waiting have been processed
+#figure.canvas.flush_events()
+#time.sleep((1))
     
 
 
 
 
-# cleanup stuff.
-stream.close()    
-audio.terminate()
 
 
