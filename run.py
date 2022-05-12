@@ -1,7 +1,7 @@
 from multiprocessing import Process, Array
 #from graphics import *
-import board
-import neopixel
+#import board
+#import neopixel
 
 import pyaudio
 import numpy as np
@@ -84,7 +84,7 @@ def sampler(sample_array):
     # print 'Saving', a.shape, 'samples'
     # np.save("sample_30s_3.txt", np.array(samples), allow_pickle=True)
 
-pixels = neopixel.NeoPixel(board.D18,150)
+#strip = neopixel.NeoPixel(board.D18,150)
 
 audio = pyaudio.PyAudio() # create pyaudio instantiation
 
@@ -109,6 +109,10 @@ fp = FrequencyPrinter('Sampler')
 # read data (based on the chunk size)
 data = wf.readframes(CHUNK_SIZE)
 
+def getPixelIndex(x,y):
+    x = GRID_WIDTH - x -1 if (y % 2 == 1) else x
+    return y * GRID_WIDTH +x
+
 # play stream (looping from beginning of file to the end)
 while data != '':
     # writing to the stream is what *actually* plays the sound.
@@ -126,9 +130,14 @@ while data != '':
     power = np.reshape(power,(16,math.floor(CHUNK_SIZE/ 16)))
     #print(power)
     matrix = np.int_(np.average(power,axis=1))
-    print(matrix)
-
-
+    matrix = np.delete(matrix,len(matrix)-1)
+    #print(matrix)
+    for x, intensity in enumerate(matrix):
+        normalized = int(intensity / 4)
+        for y in range(normalized):
+            strip.setPixelColor(getPixelIndex(x,y), (255,0,0))
+    strip.show()
+        
 
     
  
